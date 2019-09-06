@@ -141,11 +141,11 @@ public class DesignAndOrderTacosBrowserTest {
   
 
   private HtmlPage fillInAndSubmitOrderForm(HtmlPage page) throws IOException {
-    fillField(page, "input#name", "Ima Hungry");
-    fillField(page, "input#street", "1234 Culinary Blvd.");
-    fillField(page, "input#city", "Foodsville");
-    fillField(page, "input#state", "CO");
-    fillField(page, "input#zip", "81019");
+    fillField(page, "input#deliveryName", "Ima Hungry");
+    fillField(page, "input#deliveryStreet", "1234 Culinary Blvd.");
+    fillField(page, "input#deliveryCity", "Foodsville");
+    fillField(page, "input#deliveryState", "CO");
+    fillField(page, "input#deliveryZip", "81019");
     fillField(page, "input#ccNumber", "4111111111111111");
     fillField(page, "input#ccExpiration", "10/19");
     fillField(page, "input#ccCVV", "123");
@@ -164,7 +164,7 @@ public class DesignAndOrderTacosBrowserTest {
     List<String> validationErrors = getValidationErrorTexts(orderDetailsPage);
     assertEquals(9, validationErrors.size());
     assertTrue(validationErrors.get(0).contains("Please correct the problems below and resubmit."));
-    assertTrue(validationErrors.get(1).contains("Name is required"));
+    assertTrue(validationErrors.get(1).contains("Delivery name is required"));
     assertTrue(validationErrors.get(2).contains("Street is required"));
     assertTrue(validationErrors.get(3).contains("City is required"));
     assertTrue(validationErrors.get(4).contains("State is required"));
@@ -183,11 +183,11 @@ public class DesignAndOrderTacosBrowserTest {
   }
 
   private void submitInvalidOrderForm(HtmlPage page) throws FailingHttpStatusCodeException, MalformedURLException, IOException {
-    fillField(page, "input#name", "I");
-    fillField(page, "input#street", "1");
-    fillField(page, "input#city", "F");
-    fillField(page, "input#state", "C");
-    fillField(page, "input#zip", "8");
+    fillField(page, "input#deliveryName", "I");
+    fillField(page, "input#deliveryStreet", "1");
+    fillField(page, "input#deliveryCity", "F");
+    fillField(page, "input#deliveryState", "C");
+    fillField(page, "input#deliveryZip", "8");
     fillField(page, "input#ccNumber", "1234432112344322");
     fillField(page, "input#ccExpiration", "14/91");
     fillField(page, "input#ccCVV", "1234");

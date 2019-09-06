@@ -1,0 +1,40 @@
+plugins {
+    id 'java'
+    id 'maven'
+	id 'eclipse'
+	id 'org.springframework.boot' version '2.1.7.RELEASE'
+	id "io.spring.dependency-management" version "1.0.8.RELEASE"
+}
+
+repositories {
+	mavenLocal()
+	mavenCentral()
+	maven { url "http://central.maven.org/maven2" }
+	maven { url "http://repo.spring.io/release" }
+	maven { url "http://repo.spring.io/snapshot" }
+	maven { url "http://repo.spring.io/milestone" }
+	maven { url "http://dev-eat-web-01.dev.ixisam.net:8080/repository/internal" }
+	maven { url "http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release" }
+}
+
+dependencies {
+    compile 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    compile 'org.springframework.boot:spring-boot-starter-web'
+    compile 'org.springframework.boot:spring-boot-starter-jdbc'
+    compile 'org.springframework.boot:spring-boot-starter-actuator'
+    compile 'org.projectlombok:lombok'
+    runtime 'org.springframework.boot:spring-boot-devtools'
+	runtime 'com.h2database:h2'
+    testCompile 'org.springframework.boot:spring-boot-starter-test:'
+    testCompile "org.seleniumhq.selenium:selenium-java"
+	testCompile "net.sourceforge.htmlunit:htmlunit"
+}
+
+group = 'sia'
+version = '0.0.3-SNAPSHOT'
+description = 'taco-cloud'
+sourceCompatibility = '1.8'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}

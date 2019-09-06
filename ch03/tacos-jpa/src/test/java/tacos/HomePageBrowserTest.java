@@ -1,17 +1,19 @@
 package tacos;
 
-import java.util.concurrent.TimeUnit;
-
+import java.io.IOException;
+import java.net.MalformedURLException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.junit4.SpringRunner;
+import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment=WebEnvironment.RANDOM_PORT)
@@ -19,36 +21,30 @@ public class HomePageBrowserTest {
 
   @LocalServerPort
   private int port;
-  private static HtmlUnitDriver browser;  
+  private static WebClient browser;  
   
   @BeforeClass
   public static void setup() {
-    browser = new HtmlUnitDriver();
-    
-    browser.manage().timeouts()
-          .implicitlyWait(10, TimeUnit.SECONDS);
+    browser = new WebClient();
   }
   
   @AfterClass
   public static void teardown() {
-    browser.quit();
+    browser.close();
   }
   
   @Test
-  public void testHomePage() {
+  public void testHomePage() throws FailingHttpStatusCodeException, MalformedURLException, IOException {
     String homePage = "http://localhost:" + port;
-    browser.get(homePage);
+    HtmlPage page = browser.getPage(homePage);
     
-    String titleText = browser.getTitle();
+    String titleText = page.getTitleText();
     Assert.assertEquals("Taco Cloud", titleText);
     
-    String h1Text = browser.findElementByTagName("h1").getText();
+    String h1Text = page.getElementsByTagName("h1").get(0).asText();
     Assert.assertEquals("Welcome to...", h1Text);
     
-    String imgSrc = browser.findElementByTagName("img")
-                                              .getAttribute("src");
-    Assert.assertEquals(homePage + "/images/TacoCloud.png", imgSrc);
-  }
-  
-  
+    String imgSrc = page.getElementsByTagName("img").get(0).getAttribute("src");
+    Assert.assertEquals("/images/TacoCloud.png", imgSrc);
+  }  
 }

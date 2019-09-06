@@ -3,17 +3,26 @@ package tacos;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.DomNode;
+import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
+import com.gargoylesoftware.htmlunit.html.HtmlButton;
+import com.gargoylesoftware.htmlunit.html.HtmlCheckBoxInput;
+import com.gargoylesoftware.htmlunit.html.HtmlForm;
+import com.gargoylesoftware.htmlunit.html.HtmlInput;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.html.HtmlSpan;
+import com.gargoylesoftware.htmlunit.html.HtmlSubmitInput;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -24,252 +33,248 @@ import org.springframework.test.context.junit4.SpringRunner;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class DesignAndOrderTacosBrowserTest {
-
-  private static HtmlUnitDriver browser;
-
+  
+  private static WebClient browser;
+  
   @LocalServerPort
   private int port;
-
+  
   @Autowired
   TestRestTemplate rest;
-
+  
   @BeforeClass
   public static void setup() {
-    browser = new HtmlUnitDriver();
-    browser.manage().timeouts()
-        .implicitlyWait(10, TimeUnit.SECONDS);
+    browser = new WebClient();
   }
-
+  
   @AfterClass
   public static void closeBrowser() {
-    browser.quit();
+    browser.close();
   }
-
+  
   @Test
   public void testDesignATacoPage_HappyPath() throws Exception {
-    browser.get(homePageUrl());
-    clickDesignATaco();
-    assertLandedOnLoginPage();
-    doRegistration("testuser", "testpassword");
-    assertLandedOnLoginPage();
-    doLogin("testuser", "testpassword");
-    assertDesignPageElements();
-    buildAndSubmitATaco("Basic Taco", "FLTO", "GRBF", "CHED", "TMTO", "SLSA");
-    clickBuildAnotherTaco();
-    buildAndSubmitATaco("Another Taco", "COTO", "CARN", "JACK", "LETC", "SRCR");
-    fillInAndSubmitOrderForm();
-    assertEquals(homePageUrl(), browser.getCurrentUrl());
-    doLogout();
+	HtmlPage page = browser.getPage(homePageUrl());
+    page = clickDesignATaco(page);
+    assertLandedOnLoginPage(page);
+    page = doRegistration(page, "testuser", "testpassword");
+    assertLandedOnLoginPage(page);
+    page = doLogin(page, "testuser", "testpassword");
+    page = assertDesignPageElements(page);
+    HtmlPage orderPage = buildAndSubmitATaco(page, "Basic Taco", "FLTO", "GRBF", "CHED", "TMTO", "SLSA");
+    HtmlPage anotherOrderPage = clickBuildAnotherTaco(orderPage);
+    HtmlPage aPage = buildAndSubmitATaco(anotherOrderPage, "Another Taco", "COTO", "CARN", "JACK", "LETC", "SRCR");
+    HtmlPage homePage = fillInAndSubmitOrderForm(aPage);
+    assertEquals(homePageUrl(),url(homePage));
+    doLogout(homePage);
   }
-
+  
   @Test
   public void testDesignATacoPage_EmptyOrderInfo() throws Exception {
-    browser.get(homePageUrl());
-    clickDesignATaco();
-    assertLandedOnLoginPage();
-    doRegistration("testuser2", "testpassword");
-    doLogin("testuser2", "testpassword");
-    assertDesignPageElements();
-    buildAndSubmitATaco("Basic Taco", "FLTO", "GRBF", "CHED", "TMTO", "SLSA");
-    submitEmptyOrderForm();
-    fillInAndSubmitOrderForm();
-    assertEquals(homePageUrl(), browser.getCurrentUrl());
-    doLogout();
+	HtmlPage page = browser.getPage(homePageUrl());
+	HtmlPage loginPage = clickDesignATaco(page);
+    assertLandedOnLoginPage(loginPage);
+    page = doRegistration(loginPage, "testuser2", "testpassword");
+    page = doLogin(page, "testuser2", "testpassword");
+    page = assertDesignPageElements(page);
+    HtmlPage orderPage = buildAndSubmitATaco(page, "Basic Taco", "FLTO", "GRBF", "CHED", "TMTO", "SLSA");
+    submitEmptyOrderForm(orderPage);
+    HtmlPage homePage = fillInAndSubmitOrderForm(orderPage);
+    assertEquals(homePageUrl(),url(homePage));
+    doLogout(homePage);
   }
 
   @Test
   public void testDesignATacoPage_InvalidOrderInfo() throws Exception {
-    browser.get(homePageUrl());
-    clickDesignATaco();
-    assertLandedOnLoginPage();
-    doRegistration("testuser3", "testpassword");
-    doLogin("testuser3", "testpassword");
-    assertDesignPageElements();
-    buildAndSubmitATaco("Basic Taco", "FLTO", "GRBF", "CHED", "TMTO", "SLSA");
-    submitInvalidOrderForm();
-    fillInAndSubmitOrderForm();
-    assertEquals(homePageUrl(), browser.getCurrentUrl());
-    doLogout();
+	HtmlPage page = browser.getPage(homePageUrl());
+    HtmlPage loginPage = clickDesignATaco(page);
+    assertLandedOnLoginPage(loginPage);
+    page = doRegistration(loginPage, "testuser3", "testpassword");
+    page = doLogin(page, "testuser3", "testpassword");
+    page = assertDesignPageElements(page);
+    HtmlPage orderPage = buildAndSubmitATaco(page, "Basic Taco", "FLTO", "GRBF", "CHED", "TMTO", "SLSA");
+    submitInvalidOrderForm(orderPage);
+    HtmlPage homePage = fillInAndSubmitOrderForm(orderPage);
+    assertEquals(homePageUrl(),url(homePage));
+    doLogout(homePage);
   }
 
   //
   // Browser test action methods
   //
-  private void buildAndSubmitATaco(String name, String... ingredients) {
-    assertDesignPageElements();
-
+  private HtmlPage buildAndSubmitATaco(HtmlPage page, String name, String... ingredients) throws IOException {
     for (String ingredient : ingredients) {
-      browser.findElementByCssSelector("input[value='" + ingredient + "']").click();
+    	HtmlCheckBoxInput checkBox = page.querySelector("input[value='" + ingredient + "']");
+    	checkBox.setChecked(true);
     }
-    browser.findElementByCssSelector("input#name").sendKeys(name);
-    browser.findElementByCssSelector("form#tacoForm").submit();
+    HtmlInput input = page.querySelector("input#name");
+    input.setValueAttribute(name);
+    final HtmlForm form = (HtmlForm)page.querySelector("form#tacoForm");
+    final HtmlButton button = form.getFirstByXPath(".//button");
+    HtmlPage newPage = button.click();
+    return newPage;
   }
 
-  private void assertLandedOnLoginPage() {
-    assertEquals(loginPageUrl(), browser.getCurrentUrl());
+  private void assertLandedOnLoginPage(HtmlPage page) {
+    assertEquals(loginPageUrl(), url(page));
   }
 
-  private void doRegistration(String username, String password) {
-    browser.findElementByLinkText("here").click();
-    assertEquals(registrationPageUrl(), browser.getCurrentUrl());
-    browser.findElementByName("username").sendKeys(username);
-    browser.findElementByName("password").sendKeys(password);
-    browser.findElementByName("confirm").sendKeys(password);
-    browser.findElementByName("fullname").sendKeys("Test McTest");
-    browser.findElementByName("street").sendKeys("1234 Test Street");
-    browser.findElementByName("city").sendKeys("Testville");
-    browser.findElementByName("state").sendKeys("TX");
-    browser.findElementByName("zip").sendKeys("12345");
-    browser.findElementByName("phone").sendKeys("123-123-1234");
-    browser.findElementByCssSelector("form#registerForm").submit();
+  private HtmlPage doRegistration(HtmlPage page, String username, String password) throws IOException {
+	HtmlAnchor a = page.querySelector("a");
+	HtmlPage regPage = a.click();
+    assertEquals(registrationPageUrl(), url(regPage));
+    fillField(regPage, "input[name=username]", username);
+    fillField(regPage, "input[name=password]", password);
+    fillField(regPage, "input[name=confirm]", password);
+    fillField(regPage, "input[name=fullname]", "Test McTest");
+    fillField(regPage, "input[name=street]", "1234 Test Street");
+    fillField(regPage, "input[name=city]", "Testville");
+    fillField(regPage, "input[name=state]", "TX");
+    fillField(regPage, "input[name=zip]", "12345");
+    fillField(regPage, "input[name=phone]", "123-123-1234");
+    final HtmlForm form = (HtmlForm)regPage.querySelector("form");
+    final HtmlSubmitInput submit = form.querySelector("input[type=submit]");
+    return submit.click();
   }
 
-
-  private void doLogin(String username, String password) {
-    browser.findElementByName("username").sendKeys(username);
-    browser.findElementByName("password").sendKeys(password);
-    browser.findElementByCssSelector("form#loginForm").submit();
+  private HtmlPage doLogin(HtmlPage page, String username, String password) throws IOException {
+    fillField(page, "input#username", username);
+    fillField(page, "input#password", password);
+    final HtmlForm form = (HtmlForm)page.querySelector("form#loginForm");
+    final HtmlSubmitInput submit = form.querySelector("input[type=submit]");
+    return submit.click();
   }
 
-  private void doLogout() {
-    WebElement logoutForm = browser.findElementByCssSelector("form#logoutForm");
-    if (logoutForm != null) {
-      logoutForm.submit();
-    }
+  private HtmlPage doLogout(HtmlPage page) throws IOException {
+    final HtmlForm form = (HtmlForm)page.querySelector("form#logoutForm");
+    final HtmlSubmitInput submit = form.querySelector("input[type=submit]");
+    return submit.click();
   }
-
-  private void assertDesignPageElements() {
-    assertEquals(designPageUrl(), browser.getCurrentUrl());
-    List<WebElement> ingredientGroups = browser.findElementsByClassName("ingredient-group");
+  private HtmlPage assertDesignPageElements(HtmlPage page) throws FailingHttpStatusCodeException, MalformedURLException, IOException {
+    assertEquals(designPageUrl(), url(page));
+    List<?> ingredientGroups = page.getByXPath("//div[@class='ingredient-group']");
     assertEquals(5, ingredientGroups.size());
-
-    WebElement wrapGroup = browser.findElementByCssSelector("div.ingredient-group#wraps");
-    List<WebElement> wraps = wrapGroup.findElements(By.tagName("div"));
+    
+    DomNode wrapGroup = page.querySelector("div.ingredient-group#wraps");
+    List<DomNode> wraps = wrapGroup.getByXPath("div");
     assertEquals(2, wraps.size());
-    assertIngredient(wrapGroup, 0, "FLTO", "Flour Tortilla");
-    assertIngredient(wrapGroup, 1, "COTO", "Corn Tortilla");
-
-    WebElement proteinGroup = browser.findElementByCssSelector("div.ingredient-group#proteins");
-    List<WebElement> proteins = proteinGroup.findElements(By.tagName("div"));
+    assertIngredient(wraps, 0, "FLTO", "Flour Tortilla");
+    assertIngredient(wraps, 1, "COTO", "Corn Tortilla");
+    
+    DomNode proteinGroup = page.querySelector("div.ingredient-group#proteins");
+    List<DomNode> proteins = proteinGroup.getByXPath("div");
     assertEquals(2, proteins.size());
-    assertIngredient(proteinGroup, 0, "GRBF", "Ground Beef");
-    assertIngredient(proteinGroup, 1, "CARN", "Carnitas");
+    assertIngredient(proteins, 0, "GRBF", "Ground Beef");
+    assertIngredient(proteins, 1, "CARN", "Carnitas");
 
-    WebElement cheeseGroup = browser.findElementByCssSelector("div.ingredient-group#cheeses");
-    List<WebElement> cheeses = proteinGroup.findElements(By.tagName("div"));
+    DomNode cheeseGroup = page.querySelector("div.ingredient-group#cheeses");
+    List<DomNode> cheeses = cheeseGroup.getByXPath("div");
     assertEquals(2, cheeses.size());
-    assertIngredient(cheeseGroup, 0, "CHED", "Cheddar");
-    assertIngredient(cheeseGroup, 1, "JACK", "Monterrey Jack");
+    assertIngredient(cheeses, 0, "CHED", "Cheddar");
+    assertIngredient(cheeses, 1, "JACK", "Monterrey Jack");
 
-    WebElement veggieGroup = browser.findElementByCssSelector("div.ingredient-group#veggies");
-    List<WebElement> veggies = proteinGroup.findElements(By.tagName("div"));
+    DomNode veggieGroup = page.querySelector("div.ingredient-group#veggies");
+    List<DomNode> veggies = veggieGroup.getByXPath("div");
     assertEquals(2, veggies.size());
-    assertIngredient(veggieGroup, 0, "TMTO", "Diced Tomatoes");
-    assertIngredient(veggieGroup, 1, "LETC", "Lettuce");
+    assertIngredient(veggies, 0, "TMTO", "Diced Tomatoes");
+    assertIngredient(veggies, 1, "LETC", "Lettuce");
 
-    WebElement sauceGroup = browser.findElementByCssSelector("div.ingredient-group#sauces");
-    List<WebElement> sauces = proteinGroup.findElements(By.tagName("div"));
+    DomNode sauceGroup = page.querySelector("div.ingredient-group#sauces");
+    List<DomNode> sauces = sauceGroup.getByXPath("div");
     assertEquals(2, sauces.size());
-    assertIngredient(sauceGroup, 0, "SLSA", "Salsa");
-    assertIngredient(sauceGroup, 1, "SRCR", "Sour Cream");
+    assertIngredient(sauces, 0, "SLSA", "Salsa");
+    assertIngredient(sauces, 1, "SRCR", "Sour Cream");
+    return page;
+  }
+  
+
+  private HtmlPage fillInAndSubmitOrderForm(HtmlPage page) throws IOException {
+    fillField(page, "input#deliveryName", "Ima Hungry");
+    fillField(page, "input#deliveryStreet", "1234 Culinary Blvd.");
+    fillField(page, "input#deliveryCity", "Foodsville");
+    fillField(page, "input#deliveryState", "CO");
+    fillField(page, "input#deliveryZip", "81019");
+    fillField(page, "input#ccNumber", "4111111111111111");
+    fillField(page, "input#ccExpiration", "10/19");
+    fillField(page, "input#ccCVV", "123");
+    final HtmlForm form = (HtmlForm)page.querySelector("form");
+    final HtmlSubmitInput submit = form.querySelector("input[type=submit]");
+    return submit.click();
   }
 
+  private void submitEmptyOrderForm(HtmlPage page) throws IOException {
+    final HtmlForm form = (HtmlForm)page.querySelector("form#orderForm");
+    final HtmlSubmitInput submit = form.querySelector("input[type=submit]");
+    HtmlPage orderDetailsPage = submit.click();
+    
+    assertEquals(orderDetailsPageUrl(), url(orderDetailsPage));
 
-  private void fillInAndSubmitOrderForm() {
-    assertTrue(browser.getCurrentUrl().startsWith(orderDetailsPageUrl()));
-    fillField("input#deliveryName", "Ima Hungry");
-    fillField("input#deliveryStreet", "1234 Culinary Blvd.");
-    fillField("input#deliveryCity", "Foodsville");
-    fillField("input#deliveryState", "CO");
-    fillField("input#deliveryZip", "81019");
-    fillField("input#ccNumber", "4111111111111111");
-    fillField("input#ccExpiration", "10/19");
-    fillField("input#ccCVV", "123");
-    browser.findElementByCssSelector("form#orderForm").submit();
+    List<String> validationErrors = getValidationErrorTexts(orderDetailsPage);
+    assertEquals(4, validationErrors.size());
+    assertTrue(validationErrors.get(0).contains("Please correct the problems below and resubmit."));
+    assertTrue(validationErrors.get(1).contains("Not a valid credit card number"));
+    assertTrue(validationErrors.get(2).contains("Must be formatted MM/YY"));
+    assertTrue(validationErrors.get(3).contains("Invalid CVV"));    
   }
 
-  private void submitEmptyOrderForm() {
-    assertEquals(currentOrderDetailsPageUrl(), browser.getCurrentUrl());
-    // clear fields automatically populated from user profile
-    fillField("input#deliveryName", "");
-    fillField("input#deliveryStreet", "");
-    fillField("input#deliveryCity", "");
-    fillField("input#deliveryState", "");
-    fillField("input#deliveryZip", "");
-    browser.findElementByCssSelector("form#orderForm").submit();
-
-    assertEquals(orderDetailsPageUrl(), browser.getCurrentUrl());
-
-    List<String> validationErrors = getValidationErrorTexts();
-    assertEquals(9, validationErrors.size());
-    assertTrue(validationErrors.contains("Please correct the problems below and resubmit."));
-    assertTrue(validationErrors.contains("Delivery name is required"));
-    assertTrue(validationErrors.contains("Street is required"));
-    assertTrue(validationErrors.contains("City is required"));
-    assertTrue(validationErrors.contains("State is required"));
-    assertTrue(validationErrors.contains("Zip code is required"));
-    assertTrue(validationErrors.contains("Not a valid credit card number"));
-    assertTrue(validationErrors.contains("Must be formatted MM/YY"));
-    assertTrue(validationErrors.contains("Invalid CVV"));
-  }
-
-  private List<String> getValidationErrorTexts() {
-    List<WebElement> validationErrorElements = browser.findElementsByClassName("validationError");
+  private List<String> getValidationErrorTexts(HtmlPage page) {
+    List<HtmlSpan> validationErrorElements = page.getByXPath("//span[@class='validationError']");
     List<String> validationErrors = validationErrorElements.stream()
-        .map(el -> el.getText())
+        .map(el -> el.getTextContent())
         .collect(Collectors.toList());
     return validationErrors;
   }
 
-  private void submitInvalidOrderForm() {
-    assertTrue(browser.getCurrentUrl().startsWith(orderDetailsPageUrl()));
-    fillField("input#deliveryName", "I");
-    fillField("input#deliveryStreet", "1");
-    fillField("input#deliveryCity", "F");
-    fillField("input#deliveryState", "C");
-    fillField("input#deliveryZip", "8");
-    fillField("input#ccNumber", "1234432112344322");
-    fillField("input#ccExpiration", "14/91");
-    fillField("input#ccCVV", "1234");
-    browser.findElementByCssSelector("form#orderForm").submit();
+  private void submitInvalidOrderForm(HtmlPage page) throws FailingHttpStatusCodeException, MalformedURLException, IOException {
+    fillField(page, "input#deliveryName", "I");
+    fillField(page, "input#deliveryStreet", "1");
+    fillField(page, "input#deliveryCity", "F");
+    fillField(page, "input#deliveryState", "C");
+    fillField(page, "input#deliveryZip", "8");
+    fillField(page, "input#ccNumber", "1234432112344322");
+    fillField(page, "input#ccExpiration", "14/91");
+    fillField(page, "input#ccCVV", "1234");
+    final HtmlForm form = (HtmlForm)page.querySelector("form#orderForm");
+    final HtmlSubmitInput submit = form.querySelector("input[type=submit]");
+    HtmlPage orderDetailsPage = submit.click();
+    
+    assertEquals(orderDetailsPageUrl(), url(orderDetailsPage));
 
-    assertEquals(orderDetailsPageUrl(), browser.getCurrentUrl());
-
-    List<String> validationErrors = getValidationErrorTexts();
+    List<String> validationErrors = getValidationErrorTexts(orderDetailsPage);
     assertEquals(4, validationErrors.size());
-    assertTrue(validationErrors.contains("Please correct the problems below and resubmit."));
-    assertTrue(validationErrors.contains("Not a valid credit card number"));
-    assertTrue(validationErrors.contains("Must be formatted MM/YY"));
-    assertTrue(validationErrors.contains("Invalid CVV"));
+    assertTrue(validationErrors.get(0).contains("Please correct the problems below and resubmit."));
+    assertTrue(validationErrors.get(1).contains("Not a valid credit card number"));
+    assertTrue(validationErrors.get(2).contains("Must be formatted MM/YY"));
+    assertTrue(validationErrors.get(3).contains("Invalid CVV"));    
   }
 
-  private void fillField(String fieldName, String value) {
-    WebElement field = browser.findElementByCssSelector(fieldName);
-    field.clear();
-    field.sendKeys(value);
+  private void fillField(HtmlPage page, String fieldName, String value) {
+    HtmlInput field = page.querySelector(fieldName);
+    field.setValueAttribute(value);
+  }
+  
+  private void assertIngredient(List<DomNode> proteins,int ingredientIdx, String id, String name) {
+    DomNode ingredient = proteins.get(ingredientIdx); 
+    assertEquals(id, ((HtmlCheckBoxInput)ingredient.querySelector("input")).getValueAttribute());
+    assertEquals(name, ((HtmlSpan)ingredient.querySelector("span")).getTextContent());
   }
 
-  private void assertIngredient(WebElement ingredientGroup,
-                                int ingredientIdx, String id, String name) {
-    List<WebElement> proteins = ingredientGroup.findElements(By.tagName("div"));
-    WebElement ingredient = proteins.get(ingredientIdx);
-    assertEquals(id,
-        ingredient.findElement(By.tagName("input")).getAttribute("value"));
-    assertEquals(name,
-        ingredient.findElement(By.tagName("span")).getText());
+  private HtmlPage clickDesignATaco(HtmlPage page) throws IOException {	
+    assertEquals(homePageUrl(), url(page));
+    HtmlAnchor a = page.querySelector("a[id='design']");
+    return a.click();
   }
 
-  private void clickDesignATaco() {
-    assertEquals(homePageUrl(), browser.getCurrentUrl());
-    browser.findElementByCssSelector("a[id='design']").click();
+  private HtmlPage clickBuildAnotherTaco(HtmlPage page) throws IOException {
+    assertEquals(currentOrderDetailsPageUrl(), url(page));
+    HtmlAnchor a = page.querySelector("a[id='another']");
+    return a.click();
   }
-
-  private void clickBuildAnotherTaco() {
-    assertTrue(browser.getCurrentUrl().startsWith(orderDetailsPageUrl()));
-    browser.findElementByCssSelector("a[id='another']").click();
+  
+  private String url(HtmlPage page) {
+	  return page.getUrl().toString();
   }
-
-
+ 
   //
   // URL helper methods
   //
